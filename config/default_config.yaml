@@ -1,0 +1,57 @@
+# AI提供商配置
+ai:
+  default_provider: claude
+  providers:
+    claude:
+      model: claude-3-5-sonnet-20241022
+      max_tokens: 4096
+      temperature: 0.7
+    openai:
+      model: gpt-4-turbo-preview
+      max_tokens: 4096
+      temperature: 0.7
+    local:
+      base_url: http://localhost:11434
+      model: llama3.1
+      timeout: 120
+    custom:
+      # 自定义OpenAI兼容API
+      # 示例：Azure OpenAI, 通义千问, 文心一言等
+      base_url: https://api.example.com/v1
+      model: custom-model-name
+      api_key: your-api-key
+      max_tokens: 4096
+      temperature: 0.7
+
+# 文件操作配置
+file_operations:
+  batch_size: 50
+  max_file_size_mb: 100  # 超过此大小不读取内容
+  scan_max_depth: 5      # 最大扫描深度
+  backup_enabled: true
+  supported_extensions:
+    - .pdf
+    - .doc
+    - .docx
+    - .txt
+    - .jpg
+    - .jpeg
+    - .png
+    - .gif
+    - .xlsx
+    - .xls
+    - .ppt
+    - .pptx
+  
+# 安全配置
+safety:
+  require_confirmation: true
+  auto_backup: true
+  max_undo_history: 10
+  
+# 日志配置
+logging:
+  level: INFO
+  log_dir: data/logs
+  retention_days: 30
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
