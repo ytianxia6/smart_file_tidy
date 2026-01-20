@@ -7,7 +7,16 @@ from rich.console import Console
 
 from ..utils import ConfigManager
 from ..core import Controller
-from .commands import organize_command, interactive_command, undo_command, history_command
+from .commands import (
+    organize_command,
+    interactive_command,
+    undo_command,
+    history_command,
+    organize_agent_command,
+    suggest_command,
+    analyze_file_command,
+    chat_command
+)
 from .config_commands import config_app
 
 # 创建主应用
@@ -73,6 +82,48 @@ def history(
 ):
     """查看操作历史"""
     history_command(limit=limit)
+
+
+@app.command("agent")
+def agent_organize(
+    directory: str = typer.Argument(..., help="要整理的目录路径"),
+    request: str = typer.Option(..., "--request", "-r", help="整理需求描述"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="AI提供商 (claude/openai/custom/local)"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="仅模拟，不实际执行"),
+):
+    """使用Agent模式智能整理文件（推荐）"""
+    organize_agent_command(
+        directory=directory,
+        request=request,
+        provider=provider,
+        dry_run=dry_run
+    )
+
+
+@app.command("suggest")
+def suggest(
+    directory: str = typer.Argument(..., help="要分析的目录路径"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="AI提供商"),
+):
+    """分析目录并提供整理建议"""
+    suggest_command(directory=directory, provider=provider)
+
+
+@app.command("analyze")
+def analyze(
+    file_path: str = typer.Argument(..., help="要分析的文件路径"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="AI提供商"),
+):
+    """深度分析单个文件"""
+    analyze_file_command(file_path=file_path, provider=provider)
+
+
+@app.command("chat")
+def chat(
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="AI提供商"),
+):
+    """与AI助手交互式对话"""
+    chat_command(provider=provider)
 
 
 @app.command("version")

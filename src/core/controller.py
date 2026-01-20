@@ -15,20 +15,53 @@ from ..safety import OperationLogger, BackupManager, UndoManager
 class Controller:
     """主控制器 - 协调各个模块"""
     
-    def __init__(self, config: ConfigManager, ai_provider: Optional[str] = None):
+    def __init__(
+        self,
+        config: ConfigManager,
+        ai_provider: Optional[str] = None,
+        use_agent: bool = True
+    ):
         """
         初始化控制器
         
         Args:
             config: 配置管理器
             ai_provider: AI提供商（如不指定则使用配置中的默认值）
+            use_agent: 是否使用LangChain Agent模式（默认True）
         """
         self.config = config
+        self.use_agent = use_agent
         
-        # 初始化AI适配器
+        # 获取AI配置
         provider = ai_provider or config.get_default_provider()
         ai_config = config.get_ai_config(provider)
-        self.ai_adapter = AIAdapterFactory.create_adapter(provider, ai_config)
+        
+        # 初始化AI组件
+        if use_agent:
+            # 使用LangChain Agent模式
+            try:
+                from ..langchain_integration import FileOrganizerAgent
+                
+                dry_run = config.get('langchain.tools.file_operator.dry_run', False)
+                verbose = config.get('langchain.agent.verbose', True)
+                
+                self.agent = FileOrganizerAgent(
+                    llm_provider=provider,
+                    config=ai_config,
+                    dry_run=dry_run,
+                    verbose=verbose
+                )
+                self.ai_adapter = None
+                self.classifier = None
+            except ImportError as e:
+                print(f"警告: 无法导入LangChain Agent，回退到传统模式: {e}")
+                self.use_agent = False
+        
+        if not use_agent or not hasattr(self, 'agent'):
+            # 使用传统AI适配器模式
+            self.ai_adapter = AIAdapterFactory.create_adapter(provider, ai_config)
+            self.classifier = SmartClassifier(self.ai_adapter)
+            self.agent = None
         
         # 初始化各个组件
         self.file_scanner = FileScanner(
@@ -37,7 +70,6 @@ class Controller:
         )
         
         self.file_operator = FileOperator(dry_run=False)
-        self.classifier = SmartClassifier(self.ai_adapter)
         self.conversation_manager = ConversationManager()
         
         # 安全组件
@@ -89,8 +121,15 @@ class Controller:
         Returns:
             操作列表
         """
-        context = self.conversation_manager.get_context()
-        operations = self.classifier.classify_batch(files, user_request, context)
+        if self.use_agent and self.agent:
+            # 使用Agent模式
+            # Agent会自己处理整个流程，这里我们使用传统方式作为回退
+            context = self.conversation_manager.get_context()
+            operations = self.classifier.classify_batch(files, user_request, context) if self.classifier else []
+        else:
+            # 使用传统分类器
+            context = self.conversation_manager.get_context()
+            operations = self.classifier.classify_batch(files, user_request, context)
         
         # 记录交互
         self.conversation_manager.add_interaction(
@@ -99,6 +138,63 @@ class Controller:
         )
         
         return operations
+    
+    def organize_with_agent(
+        self,
+        directory: str,
+        user_request: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        使用Agent模式整理文件
+        
+        Args:
+            directory: 目标目录
+            user_request: 用户需求
+            context: 额外上下文
+            
+        Returns:
+            执行结果
+        """
+        if not self.use_agent or not self.agent:
+            return {
+                'success': False,
+                'error': 'Agent模式未启用或未初始化'
+            }
+        
+        result = self.agent.organize_files(directory, user_request, context)
+        
+        # 注意: Agent 操作不需要记录为单个 Operation
+        # Agent 内部执行的具体操作会由工具自己记录
+        
+        return result
+    
+    def analyze_file_with_agent(self, file_path: str) -> Dict[str, Any]:
+        """使用Agent分析文件"""
+        if not self.use_agent or not self.agent:
+            return {
+                'success': False,
+                'error': 'Agent模式未启用'
+            }
+        
+        return self.agent.analyze_file(file_path)
+    
+    def suggest_organization_with_agent(self, directory: str) -> Dict[str, Any]:
+        """使用Agent提供整理建议"""
+        if not self.use_agent or not self.agent:
+            return {
+                'success': False,
+                'error': 'Agent模式未启用'
+            }
+        
+        return self.agent.suggest_organization(directory)
+    
+    def chat_with_agent(self, message: str) -> str:
+        """与Agent对话"""
+        if not self.use_agent or not self.agent:
+            return "Agent模式未启用"
+        
+        return self.agent.chat(message)
     
     def preview_operations(self, operations: List[Operation]) -> Dict:
         """预览操作"""

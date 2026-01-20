@@ -8,15 +8,17 @@
 
 ## ✨ 功能特性
 
-- 🤖 **AI驱动**：支持Claude、OpenAI、本地模型（Ollama）和**自定义API**
+- 🤖 **AI Agent驱动**：基于LangChain的智能Agent，自主决策和规划
+- 🧠 **深度理解**：语义级别的文件内容分析和分类
+- 🛠️ **工具化设计**：标准化的LangChain Tools，易于扩展
 - 📁 **智能分类**：基于文件名、类型、元数据和内容进行分类
-- 🔄 **迭代优化**：支持多轮对话，根据反馈调整分类策略
+- 🔄 **对话交互**：支持与Agent对话，逐步优化整理方案
 - 🛡️ **安全可靠**：操作前预览、自动备份、支持撤销
-- 🚀 **批量处理**：高效处理大量文件，分批执行
+- 🚀 **批量处理**：高效处理大量文件，智能分批执行
 - 🎨 **友好界面**：美观的CLI界面，清晰的操作预览
 - 📝 **操作日志**：完整的操作记录，支持审计
 - 🔧 **高度可扩展**：模块化设计，易于扩展新功能
-- 🌐 **广泛兼容**：支持任何兼容OpenAI API的第三方服务
+- 🌐 **广泛兼容**：支持Claude、OpenAI、本地模型和任何OpenAI兼容API
 
 ## 安装
 
@@ -70,26 +72,56 @@ LOCAL_LLM_BASE_URL=http://localhost:11434
 LOCAL_LLM_MODEL=llama3.1
 ```
 
-**方案D: 自定义API（通义千问/DeepSeek等）**
+**方案D: 自定义API（通义千问/DeepSeek等）** ⭐
 ```bash
-# 编辑 .env
+# 复制自定义API配置模板
+cp env.custom.example .env
+
+# 编辑 .env，填写您的API信息
 DEFAULT_AI_PROVIDER=custom
-CUSTOM_API_BASE_URL=https://api.example.com/v1
-CUSTOM_API_KEY=your-key
-CUSTOM_API_MODEL=model-name
+CUSTOM_API_BASE_URL=https://api.deepseek.com/v1
+CUSTOM_API_KEY=sk-your-key
+CUSTOM_API_MODEL=deepseek-chat
+
+# 验证配置
+python examples/test_custom_api.py
 ```
 
-💡 `.env.example`包含了8+种常见服务的配置示例！
+💡 **使用自定义API？** 
+- 查看 [自定义API与LangChain集成指南](docs/CUSTOM_API_LANGCHAIN.md) 获取详细配置说明
+- `env.custom.example` 包含了6种常见服务的配置示例（DeepSeek、通义千问、Moonshot等）
 
 **测试连接：**
 ```bash
-smart-tidy config test
+# 完整测试
+python examples/test_custom_api.py
+
+# 或快速测试
+smart-tidy chat
 ```
 
 ### 2. 开始整理
 
+**🌟 Agent模式（推荐 - 基于LangChain）**
+
 ```bash
-# 交互式模式（推荐）
+# Agent智能整理（自主决策）
+smart-tidy agent ~/Downloads --request "按文件类型智能分类"
+
+# 获取整理建议（不执行操作）
+smart-tidy suggest ~/Downloads
+
+# 分析单个文件
+smart-tidy analyze ~/Downloads/paper.pdf
+
+# 与Agent对话
+smart-tidy chat
+```
+
+**传统模式**
+
+```bash
+# 交互式模式
 smart-tidy interactive ~/Downloads
 
 # 单次整理
@@ -97,9 +129,6 @@ smart-tidy organize ~/Downloads --request "把所有PDF论文整理到论文文�
 
 # 预览模式
 smart-tidy organize ~/Downloads --request "整理图片" --dry-run
-
-# 递归扫描
-smart-tidy organize ~/Documents --recursive --request "按年份分类"
 ```
 
 ### 3. 其他命令
@@ -121,7 +150,12 @@ smart-tidy --help
 ## 📖 文档
 
 - [快速开始](QUICKSTART.md) - 5分钟上手指南
+- [自定义API快速开始](CUSTOM_API_QUICKSTART.md) - 使用DeepSeek/通义千问等服务 🔥
+- [LangChain集成](docs/LANGCHAIN_INTEGRATION.md) - Agent模式完整指南 ⭐
+- [LangChain 故障排除](LANGCHAIN_FIX_GUIDE.md) - 导入错误修复指南 🔧
+- [自定义API与LangChain](docs/CUSTOM_API_LANGCHAIN.md) - 详细配置和故障排除
 - [使用指南](docs/USAGE.md) - 详细使用说明
+- [自定义API配置](docs/CUSTOM_API.md) - 传统模式的第三方AI服务配置
 - [API文档](docs/API.md) - 开发者API参考
 - [项目结构](PROJECT_STRUCTURE.md) - 项目架构说明
 - [贡献指南](CONTRIBUTING.md) - 如何贡献代码

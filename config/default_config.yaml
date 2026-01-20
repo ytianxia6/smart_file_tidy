@@ -23,6 +23,27 @@ ai:
       max_tokens: 4096
       temperature: 0.7
 
+# LangChain Agent配置
+langchain:
+  agent:
+    type: openai-tools  # Agent类型: openai-tools, react, structured-chat
+    verbose: true
+    max_iterations: 15
+    max_execution_time: 300  # 秒
+  
+  tools:
+    file_scanner:
+      max_files: 1000
+      recursive: true
+    
+    file_analyzer:
+      content_analysis: true
+      max_content_size: 2000  # 字符数
+    
+    file_operator:
+      dry_run: false  # 是否仅模拟操作
+      batch_size: 50
+
 # 文件操作配置
 file_operations:
   batch_size: 50

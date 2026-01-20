@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Confirm, Prompt
+from rich.markdown import Markdown
 
 from ..utils import ConfigManager
 from ..core import Controller
@@ -343,3 +344,212 @@ def display_operations_table(operations: list):
         )
     
     console.print(table)
+
+
+def organize_agent_command(
+    directory: str,
+    request: str,
+    provider: Optional[str],
+    dry_run: bool
+):
+    """使用Agent模式整理文件"""
+    try:
+        # 验证目录
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            console.print(f"[red]错误：目录不存在 {directory}[/red]")
+            return
+        
+        # 初始化Controller（使用Agent模式）
+        config = ConfigManager()
+        
+        # 如果是dry_run模式，设置配置
+        if dry_run:
+            config.set('langchain.tools.file_operator.dry_run', True)
+        
+        controller = Controller(config, ai_provider=provider, use_agent=True)
+        
+        if not controller.use_agent:
+            console.print("[red]错误：Agent模式初始化失败，请检查LangChain依赖是否已安装[/red]")
+            return
+        
+        console.print(f"[cyan]使用AI Provider: {provider or config.get_default_provider()}[/cyan]")
+        console.print(f"[cyan]目标目录: {directory}[/cyan]")
+        console.print(f"[cyan]用户需求: {request}[/cyan]\n")
+        
+        if dry_run:
+            console.print("[yellow]⚠ DRY RUN 模式：仅模拟操作，不会实际修改文件[/yellow]\n")
+        
+        # 确认执行
+        if not Confirm.ask("是否开始执行？"):
+            console.print("[yellow]已取消[/yellow]")
+            return
+        
+        # 执行整理
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            progress.add_task("Agent正在工作中...", total=None)
+            result = controller.organize_with_agent(directory, request)
+        
+        # 显示结果
+        if result.get('success'):
+            console.print("\n[green]✓ 整理完成！[/green]\n")
+            
+            # 显示Agent的输出
+            output = result.get('output', '')
+            if output:
+                console.print("[bold cyan]Agent报告：[/bold cyan]")
+                console.print(Markdown(output))
+            
+            # 显示中间步骤（如果有）
+            if result.get('intermediate_steps'):
+                console.print("\n[dim]执行步骤数：{}[/dim]".format(len(result['intermediate_steps'])))
+        else:
+            console.print(f"\n[red]✗ 整理失败：{result.get('error')}[/red]")
+    
+    except Exception as e:
+        console.print(f"[red]错误：{e}[/red]")
+        import traceback
+        console.print(f"[dim]{traceback.format_exc()}[/dim]")
+
+
+def suggest_command(directory: str, provider: Optional[str]):
+    """分析目录并提供整理建议"""
+    try:
+        # 验证目录
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            console.print(f"[red]错误：目录不存在 {directory}[/red]")
+            return
+        
+        # 初始化Controller（使用Agent模式）
+        config = ConfigManager()
+        controller = Controller(config, ai_provider=provider, use_agent=True)
+        
+        if not controller.use_agent:
+            console.print("[red]错误：Agent模式未启用[/red]")
+            return
+        
+        console.print(f"[cyan]正在分析目录: {directory}[/cyan]\n")
+        
+        # 获取建议
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            progress.add_task("AI正在分析...", total=None)
+            result = controller.suggest_organization_with_agent(directory)
+        
+        # 显示建议
+        if result.get('success'):
+            console.print("\n[green]✓ 分析完成！[/green]\n")
+            console.print("[bold cyan]整理建议：[/bold cyan]")
+            console.print(Markdown(result.get('suggestions', '')))
+        else:
+            console.print(f"\n[red]✗ 分析失败：{result.get('error')}[/red]")
+    
+    except Exception as e:
+        console.print(f"[red]错误：{e}[/red]")
+
+
+def analyze_file_command(file_path: str, provider: Optional[str]):
+    """分析单个文件"""
+    try:
+        # 验证文件
+        path = Path(file_path)
+        if not path.exists():
+            console.print(f"[red]错误：文件不存在 {file_path}[/red]")
+            return
+        
+        # 初始化Controller（使用Agent模式）
+        config = ConfigManager()
+        controller = Controller(config, ai_provider=provider, use_agent=True)
+        
+        if not controller.use_agent:
+            console.print("[red]错误：Agent模式未启用[/red]")
+            return
+        
+        console.print(f"[cyan]正在分析文件: {file_path}[/cyan]\n")
+        
+        # 分析文件
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            progress.add_task("AI正在分析...", total=None)
+            result = controller.analyze_file_with_agent(file_path)
+        
+        # 显示结果
+        if result.get('success', True):
+            console.print("\n[green]✓ 分析完成！[/green]\n")
+            
+            # 基本信息
+            table = Table(title="文件信息")
+            table.add_column("属性", style="cyan")
+            table.add_column("值", style="green")
+            
+            table.add_row("文件名", result.get('file_name', ''))
+            table.add_row("类型", result.get('extension', ''))
+            table.add_row("大小", f"{result.get('size_mb', 0)} MB")
+            
+            console.print(table)
+            
+            # 内容分析
+            if 'content_analysis' in result and result['content_analysis'].get('success'):
+                console.print("\n[bold cyan]内容分析：[/bold cyan]")
+                console.print(result['content_analysis'].get('analysis', ''))
+        else:
+            console.print(f"\n[red]✗ 分析失败：{result.get('error')}[/red]")
+    
+    except Exception as e:
+        console.print(f"[red]错误：{e}[/red]")
+
+
+def chat_command(provider: Optional[str]):
+    """与Agent交互式对话"""
+    try:
+        # 初始化Controller（使用Agent模式）
+        config = ConfigManager()
+        controller = Controller(config, ai_provider=provider, use_agent=True)
+        
+        if not controller.use_agent:
+            console.print("[red]错误：Agent模式未启用[/red]")
+            return
+        
+        console.print("[bold cyan]文件整理助手 - 交互模式[/bold cyan]")
+        console.print("输入您的需求，Agent将帮助您整理文件。")
+        console.print("输入 'quit' 或 'exit' 退出。\n")
+        
+        while True:
+            try:
+                message = Prompt.ask("[cyan]您[/cyan]")
+                
+                if message.lower() in ['quit', 'exit', 'q']:
+                    console.print("[yellow]再见！[/yellow]")
+                    break
+                
+                if not message.strip():
+                    continue
+                
+                # 与Agent对话
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=console
+                ) as progress:
+                    progress.add_task("Agent正在思考...", total=None)
+                    response = controller.chat_with_agent(message)
+                
+                console.print(f"\n[green]Agent[/green]: {response}\n")
+            
+            except KeyboardInterrupt:
+                console.print("\n[yellow]再见！[/yellow]")
+                break
+    
+    except Exception as e:
+        console.print(f"[red]错误：{e}[/red]")
