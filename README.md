@@ -19,6 +19,7 @@
 - 📝 **操作日志**：完整的操作记录，支持审计
 - 🔧 **高度可扩展**：模块化设计，易于扩展新功能
 - 🌐 **广泛兼容**：支持Claude、OpenAI、本地模型和任何OpenAI兼容API
+- 🌍 **Web界面**：现代化的Web管理界面，支持可视化操作和实时进度追踪
 
 ## 安装
 
@@ -147,6 +148,41 @@ smart-tidy config show
 smart-tidy --help
 ```
 
+### 4. Web界面（可选）
+
+除了命令行工具，本项目还提供现代化的Web管理界面。
+
+> **新手用户？** 如果您从未安装过 Node.js，请先阅读 [Node.js 安装与运行指南](web/NODEJS_SETUP_GUIDE.md) 获取详细的环境配置教程。
+
+**启动服务：**
+
+```bash
+# 终端1: 启动API后端服务
+uvicorn src.api.main:app --reload --port 8000
+
+# 终端2: 启动Web前端
+cd web && npm run dev
+```
+
+访问 `http://localhost:3000` 即可使用Web界面。
+
+**Web界面功能模块：**
+
+- **文件扫描**：可视化目录扫描，查看文件统计和详细列表
+- **智能整理**：引导式整理工作流，支持Agent模式和传统模式
+- **历史记录**：查看操作历史，一键撤销最近操作
+- **配置管理**：可视化配置AI提供商（Claude/OpenAI/本地/自定义）
+- **AI对话**：与AI助手实时对话，支持流式响应
+
+**技术特性：**
+
+- 基于 Next.js 16 + React 19 构建
+- 使用 shadcn/ui 和 Tailwind CSS 实现现代UI
+- SSE (Server-Sent Events) 实现实时进度更新
+- RESTful API 设计，便于集成和扩展
+
+API文档地址：`http://localhost:8000/docs`
+
 ## 📖 文档
 
 - [快速开始](QUICKSTART.md) - 5分钟上手指南
@@ -220,6 +256,10 @@ black src/
 ## 🏗️ 技术架构
 
 ```
+Web层 (Next.js + React)
+    ↓
+API层 (FastAPI)
+    ↓
 CLI层 (Typer + Rich)
     ↓
 控制器层 (协调业务逻辑)
@@ -236,6 +276,12 @@ CLI层 (Typer + Rich)
 - Pydantic (数据验证)
 - PyPDF2/pdfplumber (PDF处理)
 - Anthropic/OpenAI SDK (AI集成)
+
+**Web技术栈：**
+- FastAPI (RESTful API)
+- Next.js 16 + React 19 (前端框架)
+- shadcn/ui + Tailwind CSS (UI组件)
+- SSE (实时通信)
 
 详见 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
 
@@ -273,11 +319,21 @@ pytest --cov=src --cov-report=html
 
 ## 🙏 致谢
 
+**核心功能：**
 - [Anthropic](https://www.anthropic.com/) - Claude AI
 - [OpenAI](https://openai.com/) - GPT模型
 - [Ollama](https://ollama.ai/) - 本地模型支持
 - [Typer](https://typer.tiangolo.com/) - CLI框架
 - [Rich](https://rich.readthedocs.io/) - 终端美化
+
+**Web界面：**
+- [Next.js](https://nextjs.org/) - React全栈框架
+- [React](https://react.dev/) - 用户界面库
+- [TypeScript](https://www.typescriptlang.org/) - 类型安全的JavaScript
+- [FastAPI](https://fastapi.tiangolo.com/) - 高性能Python API框架
+- [shadcn/ui](https://ui.shadcn.com/) - 可定制UI组件库
+- [Tailwind CSS](https://tailwindcss.com/) - 实用优先的CSS框架
+- [Radix UI](https://www.radix-ui.com/) - 无障碍组件原语
 
 ## 📮 联系方式
 
