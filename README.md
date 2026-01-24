@@ -152,6 +152,8 @@ smart-tidy --help
 
 除了命令行工具，本项目还提供现代化的Web管理界面。
 
+> **新手用户？** 如果您从未安装过 Node.js，请先阅读 [Node.js 安装与运行指南](web/NODEJS_SETUP_GUIDE.md) 获取详细的环境配置教程。
+
 **启动服务：**
 
 ```bash
