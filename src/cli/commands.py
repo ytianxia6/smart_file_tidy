@@ -127,7 +127,7 @@ def interactive_command(
     recursive: bool,
     provider: Optional[str]
 ):
-    """交互式整理模式"""
+    """交互式整理模式（使用Agent自动执行）"""
     try:
         # 验证目录
         dir_path = Path(directory)
@@ -135,12 +135,20 @@ def interactive_command(
             console.print(f"[red]错误：目录不存在 {directory}[/red]")
             return
         
-        # 初始化
+        # 初始化Controller（使用Agent模式）
         config = ConfigManager()
-        controller = Controller(config, ai_provider=provider)
+        controller = Controller(config, ai_provider=provider, use_agent=True)
+        
+        if not controller.use_agent:
+            console.print("[red]错误：Agent模式初始化失败，请检查LangChain依赖是否已安装[/red]")
+            console.print("[yellow]提示：可以使用 'smart-tidy organize' 命令使用传统模式[/yellow]")
+            return
+        
+        console.print(f"[cyan]已初始化，使用 custom 提供商[/cyan]")
+        console.print(f"[cyan]可用工具：['file_scanner', 'file_analyzer', 'file_operator', 'validation_tool'][/cyan]")
         
         # 扫描文件
-        console.print(f"[cyan]开始扫描目录:[/cyan] {directory}\n")
+        console.print(f"\n[cyan]开始扫描目录:[/cyan] {directory}\n")
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -157,7 +165,8 @@ def interactive_command(
         
         # 交互式循环
         console.print("[bold cyan]交互式整理模式[/bold cyan]")
-        console.print("输入整理需求，输入 'q' 或 'quit' 退出\n")
+        console.print("输入整理需求，Agent将自动分析并执行操作")
+        console.print("输入 'q' 或 'quit' 退出\n")
         
         while True:
             # 获取用户需求
@@ -171,66 +180,52 @@ def interactive_command(
                 continue
             
             try:
-                # 生成方案
+                # 使用Agent执行整理
+                console.print()
                 with Progress(
                     SpinnerColumn(),
                     TextColumn("[progress.description]{task.description}"),
                     console=console
                 ) as progress:
-                    progress.add_task("AI正在分析...", total=None)
-                    operations = controller.generate_plan(files, request)
+                    progress.add_task("Agent正在工作中...", total=None)
+                    result = controller.organize_with_agent(directory, request)
                 
-                if len(operations) == 0:
-                    console.print("[yellow]没有需要执行的操作[/yellow]\n")
-                    continue
-                
-                # 显示预览
-                console.print(f"\n[bold cyan]操作预览：[/bold cyan]")
-                display_operations_table(operations[:20])  # 最多显示20条
-                
-                if len(operations) > 20:
-                    console.print(f"... 还有 {len(operations) - 20} 个操作未显示")
-                
-                # 询问操作
-                action = Prompt.ask(
-                    "\n选择操作",
-                    choices=["y", "n", "edit", "q"],
-                    default="n"
-                )
-                
-                if action == 'y':
-                    # 执行操作
-                    with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        console=console
-                    ) as progress:
-                        progress.add_task("执行中...", total=None)
-                        result = controller.execute_operations(operations)
+                # 显示结果
+                if result.get('success'):
+                    console.print("\n[green]✓ 完成！[/green]\n")
                     
-                    console.print(f"\n[green]✓ 完成！[/green] 移动了 {result.success_count} 个文件")
+                    # 显示Agent的输出
+                    output = result.get('output', '')
+                    if output:
+                        console.print("[bold cyan]Agent报告：[/bold cyan]")
+                        console.print(Markdown(output))
+                    
+                    # 显示中间步骤（如果有）
+                    if result.get('intermediate_steps'):
+                        console.print(f"\n[dim]执行了 {len(result['intermediate_steps'])} 个步骤[/dim]")
                     
                     # 更新文件列表
                     files = controller.scan_directory(directory, recursive=recursive)
+                    console.print(f"\n[cyan]当前还有 {len(files)} 个文件[/cyan]")
                     
-                    # 收集反馈
-                    feedback = Prompt.ask(
-                        "\n操作结果满意吗？有需要调整的吗？",
-                        default=""
-                    )
-                    
-                    if feedback:
-                        controller.add_feedback(feedback)
-                        # 继续下一轮，使用反馈优化
-                        console.print("[cyan]正在根据反馈优化...[/cyan]\n")
-                
-                elif action == 'q':
-                    break
+                    # 询问是否继续
+                    if not Confirm.ask("\n是否继续整理？", default=True):
+                        break
                 else:
-                    console.print("[yellow]已取消[/yellow]\n")
+                    console.print(f"\n[red]✗ 操作失败：{result.get('error')}[/red]\n")
+                    
+                    # 询问是否重试
+                    if not Confirm.ask("是否重试？", default=False):
+                        break
             
             except Exception as e:
                 console.print(f"[red]错误: {str(e)}[/red]\n")
+                import traceback
+                console.print(f"[dim]{traceback.format_exc()}[/dim]")
+                
+                # 询问是否继续
+                if not Confirm.ask("是否继续？", default=False):
+                    break
     
     except Exception as e:
         console.print(f"[red]错误: {str(e)}[/red]")

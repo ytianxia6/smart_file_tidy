@@ -77,25 +77,35 @@ class FileOrganizerAgent:
         Returns:
             是否为论文整理任务
         """
-        # 如果用户明确提到非论文内容，则不是论文任务
-        non_paper_keywords = ['图片', '照片', '视频', '音乐', '代码', '文档']
-        if any(keyword in user_request for keyword in non_paper_keywords):
-            return False
-        
-        # 默认情况（空需求或通用整理需求）视为论文整理
-        paper_keywords = ['论文', 'paper', 'pdf', '学术', '文献']
-        generic_keywords = ['整理', '分类', '组织', 'organize', 'tidy']
+        if not user_request or not user_request.strip():
+            # 空需求默认为论文整理（这是本项目的核心目标）
+            return True
         
         # 明确提到论文相关
-        if any(keyword in user_request for keyword in paper_keywords):
+        paper_keywords = ['论文', 'paper', '学术', '文献', '研究']
+        if any(keyword in user_request.lower() for keyword in paper_keywords):
             return True
         
-        # 通用整理需求，默认为论文整理（这是本项目的核心目标）
-        if any(keyword in user_request for keyword in generic_keywords) or not user_request.strip():
+        # 如果用户明确指定了移动目标、文件类型、具体操作，则不是默认论文任务
+        specific_keywords = [
+            '移动', 'move', '复制', 'copy',
+            '图片', '照片', 'image', 'photo', 'pictures',
+            '视频', 'video',
+            '音乐', 'music', 'audio',
+            '代码', 'code',
+            '文档', 'documents', 'docs',
+            '压缩', 'zip', 'archive'
+        ]
+        if any(keyword in user_request.lower() for keyword in specific_keywords):
+            return False
+        
+        # 通用整理需求（没有明确目标），默认为论文整理
+        generic_keywords = ['整理', '分类', '组织', 'organize', 'tidy', 'clean']
+        if any(keyword in user_request.lower() for keyword in generic_keywords):
             return True
         
-        # 空需求也默认为论文整理
-        return True
+        # 其他情况不默认为论文任务，让 Agent 自己决定
+        return False
     
     def organize_files(
         self,
@@ -178,24 +188,37 @@ Action Input: {{"directory": "{directory}"}}
 现在请开始执行，从第一个 Thought 开始。
 """
             else:
-                full_prompt = f"""{SYSTEM_PROMPT}
+                full_prompt = f"""你是一个专业的文件整理助手Agent，擅长根据用户需求智能整理文件。
 
+📁 任务信息：
 目标目录：{directory}
 用户需求：{user_request}
 
-⚠️ 你必须使用 ReAct 格式调用工具！
+🛠️ 可用工具：
+1. file_scanner - 扫描目录，获取文件列表
+2. file_analyzer - 分析文件内容和元数据
+3. file_operator - 执行文件操作（创建文件夹、移动文件等）
+4. validation_tool - 验证操作的安全性
 
-第一步示例：
-Thought: 我需要先扫描目录了解文件情况
+⚠️ 重要规则：
+1. 你必须使用 ReAct 格式（Thought -> Action -> Action Input）
+2. 必须真正执行操作，不要只给建议
+3. 根据用户需求决定需要哪些步骤
+4. 每次收到 Observation 后，继续下一个 Thought + Action + Action Input
+
+💡 建议流程：
+1. 先用 file_scanner 扫描目录了解文件情况
+2. 根据用户需求分析文件（可能需要 file_analyzer）
+3. 创建必要的文件夹（file_operator, operation_type="create_folder"）
+4. 移动或重命名文件（file_operator, operation_type="move"）
+5. 总结执行结果
+
+ReAct 格式示例：
+Thought: 我需要先扫描目录了解有哪些文件
 Action: file_scanner
 Action Input: {{"directory": "{directory}"}}
 
-记住：
-- 必须使用 "Thought -> Action -> Action Input" 格式
-- 不要描述步骤，要实际输出工具调用
-- 每次收到 Observation 后，继续输出下一个 Thought + Action + Action Input
-
-现在请开始执行，从第一个 Thought 开始。
+现在请开始执行，严格使用 ReAct 格式，从第一个 Thought 开始。
 """
             
             if context:
